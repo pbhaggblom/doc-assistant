@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ollama
+  name: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: server
+      containers:
+      - image: ollama/ollama:latest
+        name: ollama
+        ports:
+        - containerPort: 11434
+        volumeMounts:
+        - name: model-storage
+          mountPath: /root/.ollama
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: ollama-models
