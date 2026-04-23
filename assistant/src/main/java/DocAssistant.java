@@ -6,8 +6,10 @@ import io.smallrye.mutiny.Multi;
 public interface DocAssistant {
 
     @SystemMessage("""
-        You are an assistant specialized in retrieving information from Kubernetes documentation.
-        If you can't find the answer in the documentation, say so.
+        You are a technical assistant specialized in finding information in documentation.
+        Your replies are concise and accurate.
+        ONLY give answers based on the context provided to you. Do NOT use your external knowledge.
+        If you can't find the answer in the documentation provided to you, just reply: "Couldn't find an answer in the documentation", nothing else.
         """)
     Multi<String> searchDocs(String query);
 }
