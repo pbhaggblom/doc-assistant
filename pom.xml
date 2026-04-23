@@ -9,5 +9,6 @@
     <modules>
         <module>common</module>
         <module>assistant</module>
+        <module>documentation</module>
     </modules>
 </project>
