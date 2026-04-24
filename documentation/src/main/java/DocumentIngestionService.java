@@ -30,6 +30,7 @@ public class DocumentIngestionService {
     public void ingest(@Observes StartupEvent ev,
                        @ConfigProperty(name = "rag.location") Path path) {
         store.removeAll();
+
         PathMatcher matcher = p -> p.getFileName().toString().endsWith(".md");
         List<Document> list = FileSystemDocumentLoader.loadDocumentsRecursively(path, matcher);
 
