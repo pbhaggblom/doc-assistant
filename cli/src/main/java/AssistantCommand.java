@@ -18,7 +18,7 @@ public class AssistantCommand implements Callable<Integer> {
     private String question;
 
     @Override
-    public Integer call() throws InterruptedException {
+    public Integer call() {
 
         if (question == null || question.isBlank()) {
             System.err.println("Question cannot be empty.");
