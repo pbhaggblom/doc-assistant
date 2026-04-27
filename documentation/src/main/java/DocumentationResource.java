@@ -15,8 +15,4 @@ public class DocumentationResource {
     public void ingest() {
         ingestor.ingest();
     }
-
-//    public void getStoreInfo() {
-//        store.
-//    }
 }

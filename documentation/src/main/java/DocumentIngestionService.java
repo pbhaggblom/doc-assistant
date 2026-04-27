@@ -1,10 +1,7 @@
-import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.document.splitter.DocumentSplitters.recursive;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.security.MessageDigest;
@@ -17,8 +14,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
-import io.quarkus.runtime.StartupEvent;
-import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -43,24 +38,18 @@ public class DocumentIngestionService {
     @ConfigProperty(name = "rag.location")
     Path path;
 
-    private static final float[] ZERO_VECTOR = new float[768]; // Nomic har 768 dimensioner
+    private static final float[] ZERO_VECTOR = new float[768];
     private static final Embedding DUMMY_EMBEDDING = Embedding.from(ZERO_VECTOR);
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
     public void ingest() {
         if (!isRunning.compareAndSet(false, true)) {
-            throw new IllegalStateException("Ingestion is already running!");
+            throw new IllegalStateException("Ingestion is already running");
         }
-
-//        store.removeAll();
 
         PathMatcher matcher = p -> p.getFileName().toString().endsWith(".md");
         List<Document> list = loadDocuments(path, matcher);
-
-//        for (Document doc : list) {
-//            System.out.println(doc.metadata());
-//        }
 
         for (Document doc : list) {
             String fileName = doc.metadata().getString("file_name");
