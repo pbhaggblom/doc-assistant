@@ -10,5 +10,6 @@
         <module>common</module>
         <module>assistant</module>
         <module>documentation</module>
+        <module>cli</module>
     </modules>
 </project>
