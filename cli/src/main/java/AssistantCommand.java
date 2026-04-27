@@ -1,17 +1,14 @@
 import io.quarkus.grpc.GrpcClient;
-import io.quarkus.picocli.runtime.annotations.TopCommand;
 import org.pbhaggblom.AssistantServiceGrpc;
 import org.pbhaggblom.DocRequest;
 import org.pbhaggblom.DocResponse;
-import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
 import java.util.Iterator;
 import java.util.concurrent.Callable;
 
-@TopCommand
-@Command(name = "k?s")
+@Command(name = "ask")
 public class AssistantCommand implements Callable<Integer> {
 
     @GrpcClient("assistant")
@@ -49,8 +46,4 @@ public class AssistantCommand implements Callable<Integer> {
         return 0;
     }
 
-    public static void main(String... args) {
-        int exitCode = new CommandLine(new AssistantCommand()).execute(args);
-        System.exit(exitCode);
-    }
 }
