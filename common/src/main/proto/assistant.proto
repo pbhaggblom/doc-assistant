@@ -1,19 +1,19 @@
 syntax = "proto3";
 
-option java_package = "org.pbhaggblom";
+option java_package = "org.pbhaggblom.assistant";
 option java_outer_classname = "AssistantProto";
 option java_multiple_files = true;
 
 package ai_assistant;
 
-message DocRequest {
+message AssistantRequest {
   string question = 1;
 }
 
-message DocResponse {
+message AssistantResponse {
   string text_chunk = 1;
 }
 
 service AssistantService {
-  rpc ResultStream (DocRequest) returns (stream DocResponse) {}
+  rpc ResultStream (AssistantRequest) returns (stream AssistantResponse) {}
 }
