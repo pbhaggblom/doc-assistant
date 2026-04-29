@@ -20,15 +20,15 @@ import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.pbhaggblom.DocumentationService;
+import org.pbhaggblom.documentation.DocumentationService;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.chroma.ChromaEmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import org.pbhaggblom.IngestionRequest;
-import org.pbhaggblom.IngestionResponse;
+import org.pbhaggblom.documentation.IngestionRequest;
+import org.pbhaggblom.documentation.IngestionResponse;
 
 
 @GrpcService

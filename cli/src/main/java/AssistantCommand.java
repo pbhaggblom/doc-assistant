@@ -1,7 +1,7 @@
 import io.quarkus.grpc.GrpcClient;
-import org.pbhaggblom.AssistantServiceGrpc;
-import org.pbhaggblom.DocRequest;
-import org.pbhaggblom.DocResponse;
+import org.pbhaggblom.assistant.AssistantServiceGrpc;
+import org.pbhaggblom.assistant.AssistantRequest;
+import org.pbhaggblom.assistant.AssistantResponse;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
@@ -25,15 +25,15 @@ public class AssistantCommand implements Callable<Integer> {
             return 1;
         }
 
-        DocRequest query = DocRequest.newBuilder()
+        AssistantRequest query = AssistantRequest.newBuilder()
                 .setQuestion(question)
                 .build();
 
         try {
-            Iterator<DocResponse> responses = assistantService.resultStream(query);
+            Iterator<AssistantResponse> responses = assistantService.resultStream(query);
 
             while (responses.hasNext()) {
-                DocResponse response = responses.next();
+                AssistantResponse response = responses.next();
                 System.out.print(response.getTextChunk());
                 System.out.flush();
             }

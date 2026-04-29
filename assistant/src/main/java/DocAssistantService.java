@@ -1,9 +1,9 @@
 import io.quarkus.grpc.GrpcService;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
-import org.pbhaggblom.DocRequest;
-import org.pbhaggblom.DocResponse;
-import org.pbhaggblom.AssistantService;
+import org.pbhaggblom.assistant.AssistantRequest;
+import org.pbhaggblom.assistant.AssistantResponse;
+import org.pbhaggblom.assistant.AssistantService;
 
 @GrpcService
 public class DocAssistantService implements AssistantService {
@@ -12,8 +12,8 @@ public class DocAssistantService implements AssistantService {
     DocAssistant assistant;
 
     @Override
-    public Multi<DocResponse> resultStream(DocRequest request) {
+    public Multi<AssistantResponse> resultStream(AssistantRequest request) {
         return assistant.searchDocs(request.getQuestion()).onItem()
-                .transform(chunk -> DocResponse.newBuilder().setTextChunk(chunk).build());
+                .transform(chunk -> AssistantResponse.newBuilder().setTextChunk(chunk).build());
     }
 }

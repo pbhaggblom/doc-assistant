@@ -1,5 +1,7 @@
 import io.quarkus.grpc.GrpcClient;
-import org.pbhaggblom.*;
+import org.pbhaggblom.documentation.DocumentationServiceGrpc.DocumentationServiceBlockingStub;
+import org.pbhaggblom.documentation.IngestionRequest;
+import org.pbhaggblom.documentation.IngestionResponse;
 import picocli.CommandLine.Command;
 
 import java.util.Iterator;
@@ -9,7 +11,7 @@ import java.util.concurrent.Callable;
 public class IngestionCommand implements Callable<Integer> {
 
     @GrpcClient("ingestor")
-    DocumentationServiceGrpc.DocumentationServiceBlockingStub documentService;
+    DocumentationServiceBlockingStub documentService;
 
     @Override
     public Integer call() {
