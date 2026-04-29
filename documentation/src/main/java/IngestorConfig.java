@@ -11,7 +11,7 @@ import static dev.langchain4j.data.document.splitter.DocumentSplitters.recursive
 public class IngestorConfig {
 
     @Produces
-    @ApplicationScoped // Skapas en gång och delas av alla
+    @ApplicationScoped
     public EmbeddingStoreIngestor ingestor(ChromaEmbeddingStore store, EmbeddingModel model) {
         return EmbeddingStoreIngestor.builder()
                 .embeddingStore(store)
