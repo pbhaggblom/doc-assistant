@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: assistant
+  name: assistant-service
+spec:
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  - name: grpc
+    port: 9000
+    targetPort: 9000
+  selector:
+    app: assistant
+  type: ClusterIP
+status:
+  loadBalancer: {}
