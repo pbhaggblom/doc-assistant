@@ -21,7 +21,7 @@ public class IngestionCommand implements Callable<Integer> {
 
             while (responses.hasNext()) {
                 IngestionResponse response = responses.next();
-                System.out.print(response.getResponse());
+                System.out.println(response.getResponse());
                 System.out.flush();
             }
             System.out.println();
