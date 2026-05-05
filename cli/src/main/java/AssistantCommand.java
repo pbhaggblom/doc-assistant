@@ -6,6 +6,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 @Command(name = "ask")
@@ -14,19 +15,21 @@ public class AssistantCommand implements Callable<Integer> {
     @GrpcClient("assistant")
     AssistantServiceGrpc.AssistantServiceBlockingStub assistantService;
 
-    @Parameters(index = "0", description = "User question", defaultValue = "")
-    private String question;
+    @Parameters(index = "0..*", description = "User question", defaultValue = "")
+    private List<String> questionWords;
 
     @Override
     public Integer call() {
 
-        if (question == null || question.isBlank()) {
-            System.err.println("Question cannot be empty.");
+        String fullQuestion = String.join(" ", questionWords);
+
+        if (fullQuestion.isBlank()) {
+            System.err.println("Please provide a question.");
             return 1;
         }
 
         AssistantRequest query = AssistantRequest.newBuilder()
-                .setQuestion(question)
+                .setQuestion(fullQuestion)
                 .build();
 
         try {
