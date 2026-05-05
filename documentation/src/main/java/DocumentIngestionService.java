@@ -80,6 +80,21 @@ public class DocumentIngestionService implements DocumentationService {
         }
     }
 
+    private String cleanMarkdown(String content) {
+        if (content == null) return "";
+
+        String cleaned = content;
+
+        cleaned = cleaned.replaceAll("(?s)^---.*?---", "");
+        cleaned = cleaned.replaceAll("\\{\\{<\\s*glossary_tooltip\\s+text=\"([^\"]+)\"[^>]*>\\}\\}", "$1");
+        cleaned = cleaned.replaceAll("\\{\\{<.*?>\\}\\}", "");
+        cleaned = cleaned.replaceAll("(?i)<!--.*?-->", "");
+        cleaned = cleaned.replaceAll("\\[([^\\]]+)\\]\\([^)]+\\)", "$1");
+        cleaned = cleaned.replaceAll("\\n{3,}", "\n\n");
+
+        return cleaned.trim();
+    }
+
     @Blocking
     @Override
     public Multi<IngestionResponse> startIngestion(IngestionRequest request) {
@@ -104,11 +119,15 @@ public class DocumentIngestionService implements DocumentationService {
 
                     String res = "Changes detected in " + fileName + ". Updating index...";
 
+                    String cleanedText = cleanMarkdown(doc.text());
+                    String textWithContext = "Document: " + fileName + "\n\n" + cleanedText;
+                    Document cleanDoc = Document.from(textWithContext, doc.metadata());
+
                     store.removeAll(metadataKey("file_name").isEqualTo(fileName));
 
                     doc.metadata().put("file_hash", currentHash);
                     doc.metadata().put("last_updated", LocalDateTime.now().toString());
-                    ingestor.ingest(doc);
+                    ingestor.ingest(cleanDoc);
 
                     return IngestionResponse.newBuilder().setResponse(res).build();
                 })
