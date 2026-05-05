@@ -89,7 +89,7 @@ public class DocumentIngestionService implements DocumentationService {
                     .asRuntimeException();
         }
 
-        PathMatcher matcher = p -> p.getFileName().toString().endsWith(".md");
+        PathMatcher matcher = p -> p.getFileName().toString().endsWith(".md") && !p.getFileName().toString().startsWith("_");
 
         return Multi.createFrom().iterable(loadDocuments(path, matcher))
                 .onItem().transform(doc -> {
