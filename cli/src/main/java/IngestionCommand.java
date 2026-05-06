@@ -25,7 +25,6 @@ public class IngestionCommand implements Callable<Integer> {
                 System.out.flush();
             }
             System.out.println("Ingestion completed successfully");
-            System.out.println();
             return 0;
 
         } catch (Exception e) {
