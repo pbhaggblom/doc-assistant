@@ -17,18 +17,17 @@ import io.grpc.Status;
 import io.quarkus.grpc.GrpcService;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.pbhaggblom.documentation.DocumentationService;
+import org.pbhaggblom.documentation.*;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.chroma.ChromaEmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import org.pbhaggblom.documentation.IngestionRequest;
-import org.pbhaggblom.documentation.IngestionResponse;
 
 
 @GrpcService
@@ -93,6 +92,38 @@ public class DocumentIngestionService implements DocumentationService {
         cleaned = cleaned.replaceAll("\\n{3,}", "\n\n");
 
         return cleaned.trim();
+    }
+
+    private String listFiles(List<String> list) {
+        StringBuilder sb = new StringBuilder();
+
+        for (String fileName : list) {
+            sb.append(fileName).append("\n");
+        }
+        return sb.toString();
+    }
+
+    @Blocking
+    @Override
+    public Uni<StatusResponse> checkStatus(StatusRequest request) {
+        PathMatcher matcher = p -> p.getFileName().toString().endsWith(".md") && !p.getFileName().toString().startsWith("_");
+
+        List<String> changedFiles = loadDocuments(path, matcher).stream().filter(doc -> {
+            String fileName = doc.metadata().getString("file_name");
+            String currentHash = calculateHash(doc.text());
+
+            return !isAlreadyIndexed(fileName, currentHash);
+        }).map(doc -> doc.metadata().getString("file_name")).toList();
+
+        String response = changedFiles.isEmpty()
+                ? "No documents have been updated since last ingestion"
+                : "Following documents have been updated since last ingestion: \n\n" + listFiles(changedFiles);
+
+        return Uni.createFrom()
+                .item(StatusResponse
+                .newBuilder()
+                .setResponse(response)
+                .build());
     }
 
     @Blocking
