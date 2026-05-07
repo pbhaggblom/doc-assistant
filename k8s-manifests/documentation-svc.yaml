@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: documentation
+  name: documentation-service
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: h2c
+spec:
+  ports:
+  - name: http
+    port: 8081
+    protocol: TCP
+    targetPort: 8081
+  - name: h2c
+    port: 9001
+    targetPort: 9001
+  selector:
+    app: documentation
+  type: ClusterIP
+
