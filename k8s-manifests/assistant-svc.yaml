@@ -4,13 +4,15 @@ metadata:
   labels:
     app: assistant
   name: assistant-service
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: h2c
 spec:
   ports:
   - name: http
     port: 8080
     protocol: TCP
     targetPort: 8080
-  - name: grpc
+  - name: h2c
     port: 9000
     targetPort: 9000
   selector:
