@@ -19,3 +19,15 @@ spec:
         name: chroma
         ports:
         - containerPort: 8000
+        volumeMounts:
+        - name: rag-storage
+          mountPath: /data
+        env:
+        - name: PERSIST_DIRECTORY
+          value: "/data"
+        - name: IS_PERSISTENT
+          value: "TRUE"
+      volumes:
+        - name: rag-storage
+          persistentVolumeClaim:
+            claimName: chroma-data
