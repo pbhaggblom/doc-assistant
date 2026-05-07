@@ -18,7 +18,5 @@ spec:
       - image: pbhaggblom/assistant-test:latest
         name: assistant-test
         ports:
-        - containerPort: 8080
-        env:
-          - name: RAG_LOCATION
-            value: "/mnt/storage/rag-data/"
+        - containerPort: 9000
+        imagePullPolicy: Always

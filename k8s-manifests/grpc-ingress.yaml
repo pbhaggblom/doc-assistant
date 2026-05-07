@@ -3,11 +3,11 @@ kind: Ingress
 metadata:
   name: grpc-ingress
   annotations:
-    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/service.serverstransport: h2c@internal
 spec:
-  ingressClassName: nginx
   rules:
-  - host: api.doc-assistant.se
+  - host: assistant.doc-assistant
     http:
       paths:
       - path: /
@@ -16,4 +16,14 @@ spec:
           service:
             name: assistant-service
             port:
-              number: 9000
+              name: h2c
+  - host: docs.doc-assistant
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: documentation-service
+            port:
+              name: h2c
