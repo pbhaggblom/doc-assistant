@@ -1,0 +1,13 @@
+**/target/
+**/build/
+**/out/
+
+.idea/
+.vscode/
+*.iml
+
+*.log
+.DS_Store
+
+.git
+.gitignore

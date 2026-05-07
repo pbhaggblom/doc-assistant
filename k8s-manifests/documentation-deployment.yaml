@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: documentation
+  name: documentation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: documentation
+  template:
+    metadata:
+      labels:
+        app: documentation
+    spec:
+      containers:
+      - image: pbhaggblom/documentation-test:latest
+        name: documentation-test
+        ports:
+        - containerPort: 8081
+        volumeMounts:
+        - name: k8s-docs
+          mountPath: /data/rag
+      volumes:
+      - name: k8s-docs
+        hostPath: 
+          path: "/home/pontus/code/k8s-docs/content/en/docs/concepts/configuration"
+          type: Directory
+

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option java_package = "org.pbhaggblom.documentation";
+option java_outer_classname = "DocumentationProto";
+option java_multiple_files = true;
+
+package ai_assistant;
+
+message IngestionRequest {
+}
+
+message IngestionResponse {
+  string response = 1;
+}
+
+message StatusRequest {
+}
+
+message StatusResponse {
+  string response = 1;
+}
+
+service DocumentationService {
+  rpc StartIngestion (IngestionRequest) returns (stream IngestionResponse) {}
+  rpc CheckStatus (StatusRequest) returns (StatusResponse) {}
+}

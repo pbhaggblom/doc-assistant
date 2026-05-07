@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grpc-ingress
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/service.serverstransport: h2c@internal
+spec:
+  rules:
+  - host: assistant.doc-assistant
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: assistant-service
+            port:
+              name: h2c
+  - host: docs.doc-assistant
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: documentation-service
+            port:
+              name: h2c

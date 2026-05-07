@@ -1,0 +1,32 @@
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+WORKDIR /app
+
+COPY pom.xml .
+COPY common/pom.xml common/
+COPY documentation/pom.xml documentation/
+
+COPY common/src common/src
+COPY documentation/src documentation/src
+
+RUN mkdir -p cli assistant && \
+    echo '<project><modelVersion>4.0.0</modelVersion><parent><groupId>org.pbhaggblom</groupId><artifactId>doc-assistant</artifactId><version>1.0.0-SNAPSHOT</version></parent><artifactId>cli</artifactId></project>' > cli/pom.xml && \
+    echo '<project><modelVersion>4.0.0</modelVersion><parent><groupId>org.pbhaggblom</groupId><artifactId>doc-assistant</artifactId><version>1.0.0-SNAPSHOT</version></parent><artifactId>assistant</artifactId></project>' > assistant/pom.xml
+
+RUN mvn install -DskipTests -pl common,documentation -am
+
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.24
+WORKDIR /deployments
+
+COPY --from=build --chown=185 /app/documentation/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=build --chown=185 /app/documentation/target/quarkus-app/*.jar /deployments/
+COPY --from=build --chown=185 /app/documentation/target/quarkus-app/app/ /deployments/app/
+COPY --from=build --chown=185 /app/documentation/target/quarkus-app/quarkus/ /deployments/quarkus/
+
+EXPOSE 8081
+EXPOSE 9001
+USER 185
+
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+
+ENTRYPOINT [ "/opt/jboss/container/java/run/run-java.sh" ]
