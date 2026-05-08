@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mariadb
+  name: mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+      - image: mariadb:lts
+        name: mariadb
+        volumeMounts:
+        - name: mariadb-data
+          mountPath: /var/lib/mysql
+        env:
+        - name: MARIADB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: k8s-secrets
+              key: mariadb_root_password
+        - name: MARIADB_DATABASE
+          value: "keycloak"
+        - name: MARIADB_USER
+          value: "keycloak"
+        - name: MARIADB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: k8s-secrets
+              key: mariadb_password
+        ports:
+        - containerPort: 3306
+      volumes:
+      - name: mariadb-data
+        persistentVolumeClaim:
+          claimName: mariadb-pvc 
