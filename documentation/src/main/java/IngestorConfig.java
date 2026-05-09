@@ -16,7 +16,7 @@ public class IngestorConfig {
         return EmbeddingStoreIngestor.builder()
                 .embeddingStore(store)
                 .embeddingModel(model)
-                .documentSplitter(recursive(500, 75))
+                .documentSplitter(recursive(600, 100))
                 .build();
     }
 }

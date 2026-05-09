@@ -21,14 +21,14 @@ public class IngestionCommand implements Callable<Integer> {
 
             while (responses.hasNext()) {
                 IngestionResponse response = responses.next();
-                System.out.print(response.getResponse());
+                System.out.println(response.getResponse());
                 System.out.flush();
             }
-            System.out.println();
+            System.out.println("Ingestion completed successfully");
             return 0;
 
         } catch (Exception e) {
-            System.err.println("Error during stream: " + e.getMessage());
+            System.err.println("Error during ingestion: " + e.getMessage());
             return 1;
         }
     }
