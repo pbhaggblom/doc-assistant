@@ -18,6 +18,7 @@ import io.quarkus.grpc.GrpcService;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -128,6 +129,7 @@ public class DocumentIngestionService implements DocumentationService {
 
     @Blocking
     @Override
+    @RolesAllowed("admin")
     public Multi<IngestionResponse> startIngestion(IngestionRequest request) {
         if (!isRunning.compareAndSet(false, true)) {
             throw Status.ALREADY_EXISTS
