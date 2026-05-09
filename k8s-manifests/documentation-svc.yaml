@@ -14,7 +14,7 @@ spec:
     targetPort: 8081
   - name: h2c
     port: 9001
-    targetPort: 9001
+    targetPort: 8081
   selector:
     app: documentation
   type: ClusterIP
