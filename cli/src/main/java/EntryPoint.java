@@ -3,7 +3,7 @@ import picocli.CommandLine.Command;
 
 @TopCommand
 @Command(name = "doc",
-        subcommands = {AssistantCommand.class, IngestionCommand.class, StatusCommand.class},
+        subcommands = {AssistantCommand.class, IngestionCommand.class, StatusCommand.class, ResetCommand.class},
         mixinStandardHelpOptions = true,
         description = "Assistant that answers questions about Kubernetes")
 public class EntryPoint {
