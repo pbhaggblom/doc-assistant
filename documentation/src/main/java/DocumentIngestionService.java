@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.security.MessageDigest;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
@@ -18,6 +17,7 @@ import io.quarkus.grpc.GrpcService;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.unchecked.Unchecked;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -52,9 +52,76 @@ public class DocumentIngestionService implements DocumentationService {
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
+    @Blocking
+    @Override
+    public Uni<StatusResponse> checkStatus(StatusRequest request) {
+        PathMatcher matcher = getPathMatcher();
+
+        List<String> changedFiles = loadDocuments(path, matcher).stream()
+                .filter(this::hasPendingChanges)
+                .map(doc -> doc.metadata().getString("file_name"))
+                .toList();
+
+        String response = changedFiles.isEmpty()
+                ? "No documents have been updated since last ingestion"
+                : "Following documents have been updated since last ingestion: \n\n" + listFiles(changedFiles);
+
+        return Uni.createFrom()
+                .item(StatusResponse
+                .newBuilder()
+                .setResponse(response)
+                .build());
+    }
+
+    @Blocking
+    @Override
+    @RolesAllowed("admin")
+    public Multi<IngestionResponse> startIngestion(IngestionRequest request) {
+        if (!isRunning.compareAndSet(false, true)) {
+            throw Status.ALREADY_EXISTS
+                    .withDescription("Ingestion is already running")
+                    .asRuntimeException();
+        }
+
+        PathMatcher matcher = getPathMatcher();
+
+        return Multi.createFrom().iterable(loadDocuments(path, matcher))
+                .onItem().transform(Unchecked.function(doc -> {
+
+                    String fileName = doc.metadata().getString("file_name");
+                    String currentHash = calculateHash(doc.text());
+
+                    if (isAlreadyIndexed(fileName, currentHash)) {
+                        String res = "Skipping " + fileName + " - no changes detected.";
+                        return IngestionResponse.newBuilder().setResponse(res).build();
+                    }
+
+                    String res = "Changes detected in " + fileName + ". Updating index...";
+
+                    doc.metadata().put("file_hash", currentHash);
+                    doc.metadata().put("ingestion_date", LocalDateTime.now().toString());
+
+                    String cleanedText = cleanMarkdown(doc.text());
+                    String textWithContext = "Document: " + fileName + "\n\n" + cleanedText;
+                    Document cleanDoc = Document.from(textWithContext, doc.metadata());
+
+                    try {
+                        ingestor.ingest(cleanDoc);
+                        store.removeAll(metadataKey("file_name").isEqualTo(fileName)
+                                .and(metadataKey("file_hash").isNotEqualTo(currentHash)));
+                    } catch (Exception e) {
+                        store.removeAll(metadataKey("file_name").isEqualTo(fileName)
+                                        .and(metadataKey("file_hash").isEqualTo(currentHash)));
+                        throw e;
+                    }
+
+                    return IngestionResponse.newBuilder().setResponse(res).build();
+                }))
+                .onTermination().invoke(() -> isRunning.set(false));
+    }
+
     private List<Document> loadDocuments(Path path, PathMatcher matcher) {
-        List<Document> list = FileSystemDocumentLoader.loadDocumentsRecursively(path, matcher);
-        return list.stream().peek(doc -> doc.metadata().put("ingestion_date", LocalDate.now().toString())).toList();
+        return FileSystemDocumentLoader.loadDocumentsRecursively(path, matcher);
     }
 
     private boolean isAlreadyIndexed(String fileName, String hash) {
@@ -104,66 +171,14 @@ public class DocumentIngestionService implements DocumentationService {
         return sb.toString();
     }
 
-    @Blocking
-    @Override
-    public Uni<StatusResponse> checkStatus(StatusRequest request) {
-        PathMatcher matcher = p -> p.getFileName().toString().endsWith(".md") && !p.getFileName().toString().startsWith("_");
-
-        List<String> changedFiles = loadDocuments(path, matcher).stream().filter(doc -> {
-            String fileName = doc.metadata().getString("file_name");
-            String currentHash = calculateHash(doc.text());
-
-            return !isAlreadyIndexed(fileName, currentHash);
-        }).map(doc -> doc.metadata().getString("file_name")).toList();
-
-        String response = changedFiles.isEmpty()
-                ? "No documents have been updated since last ingestion"
-                : "Following documents have been updated since last ingestion: \n\n" + listFiles(changedFiles);
-
-        return Uni.createFrom()
-                .item(StatusResponse
-                .newBuilder()
-                .setResponse(response)
-                .build());
+    private PathMatcher getPathMatcher() {
+        return p -> p.getFileName().toString().endsWith(".md") &&
+                !p.getFileName().toString().startsWith("_");
     }
 
-    @Blocking
-    @Override
-    @RolesAllowed("admin")
-    public Multi<IngestionResponse> startIngestion(IngestionRequest request) {
-        if (!isRunning.compareAndSet(false, true)) {
-            throw Status.ALREADY_EXISTS
-                    .withDescription("Ingestion is already running")
-                    .asRuntimeException();
-        }
-
-        PathMatcher matcher = p -> p.getFileName().toString().endsWith(".md") && !p.getFileName().toString().startsWith("_");
-
-        return Multi.createFrom().iterable(loadDocuments(path, matcher))
-                .onItem().transform(doc -> {
-
-                    String fileName = doc.metadata().getString("file_name");
-                    String currentHash = calculateHash(doc.text());
-
-                    if (isAlreadyIndexed(fileName, currentHash)) {
-                        String res = "Skipping " + fileName + " - no changes detected.";
-                        return IngestionResponse.newBuilder().setResponse(res).build();
-                    }
-
-                    String res = "Changes detected in " + fileName + ". Updating index...";
-
-                    String cleanedText = cleanMarkdown(doc.text());
-                    String textWithContext = "Document: " + fileName + "\n\n" + cleanedText;
-                    Document cleanDoc = Document.from(textWithContext, doc.metadata());
-
-                    store.removeAll(metadataKey("file_name").isEqualTo(fileName));
-
-                    doc.metadata().put("file_hash", currentHash);
-                    doc.metadata().put("last_updated", LocalDateTime.now().toString());
-                    ingestor.ingest(cleanDoc);
-
-                    return IngestionResponse.newBuilder().setResponse(res).build();
-                })
-                .onTermination().invoke(() -> isRunning.set(false));
+    private boolean hasPendingChanges(Document doc) {
+        String fileName = doc.metadata().getString("file_name");
+        String currentHash = calculateHash(doc.text());
+        return !isAlreadyIndexed(fileName, currentHash);
     }
 }
