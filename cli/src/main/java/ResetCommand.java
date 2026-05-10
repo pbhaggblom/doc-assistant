@@ -1,4 +1,7 @@
+import io.grpc.Metadata;
+import io.grpc.stub.MetadataUtils;
 import io.quarkus.grpc.GrpcClient;
+import jakarta.inject.Inject;
 import org.pbhaggblom.documentation.DocumentationServiceGrpc.DocumentationServiceBlockingStub;
 import org.pbhaggblom.documentation.ResetRequest;
 import org.pbhaggblom.documentation.ResetResponse;
@@ -12,11 +15,20 @@ public class ResetCommand implements Callable<Integer> {
     @GrpcClient("ingestor")
     DocumentationServiceBlockingStub documentService;
 
+    @Inject
+    AuthService authService;
+
     @Override
     public Integer call() throws Exception {
         try {
+            Metadata headers = authService.getAuthHeaders();
+
+            var authenticatedStub = documentService.withInterceptors(
+                    MetadataUtils.newAttachHeadersInterceptor(headers)
+            );
+
             ResetRequest request = ResetRequest.newBuilder().build();
-            ResetResponse response = documentService.clearDatabase(request);
+            ResetResponse response = authenticatedStub.clearDatabase(request);
             System.out.println(response.getResponse());
             System.out.flush();
             return 0;
