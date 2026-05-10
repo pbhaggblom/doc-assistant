@@ -125,15 +125,16 @@ public class DocumentIngestionService implements DocumentationService {
     @RolesAllowed("admin")
     public Uni<ResetResponse> clearDatabase(ResetRequest request) {
         try {
-            store.removeAll(metadataKey("file_name").isGreaterThan(""));
+            store.removeAll(metadataKey("file_name").isNotEqualTo(""));
 
             return Uni.createFrom().item(ResetResponse.newBuilder()
                     .setResponse("Database cleared successfully.")
                     .build());
         } catch (Exception e) {
-            return Uni.createFrom().item(ResetResponse.newBuilder()
-                    .setResponse("Failed to clear database: " + e.getMessage())
-                    .build());
+            e.printStackTrace();
+            throw Status.INTERNAL
+                    .withDescription("Failed to clear database: " + e.getMessage())
+                    .asRuntimeException();
         }
     }
 
