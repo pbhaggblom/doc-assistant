@@ -120,6 +120,23 @@ public class DocumentIngestionService implements DocumentationService {
                 .onTermination().invoke(() -> isRunning.set(false));
     }
 
+    @Blocking
+    @RolesAllowed("admin")
+    @Override
+    public Uni<ResetResponse> clearDatabase(ResetRequest request) {
+        try {
+            store.removeAll(metadataKey("file_name").isGreaterThan(""));
+
+            return Uni.createFrom().item(ResetResponse.newBuilder()
+                    .setResponse("Database cleared successfully.")
+                    .build());
+        } catch (Exception e) {
+            return Uni.createFrom().item(ResetResponse.newBuilder()
+                    .setResponse("Failed to clear database: " + e.getMessage())
+                    .build());
+        }
+    }
+
     private List<Document> loadDocuments(Path path, PathMatcher matcher) {
         return FileSystemDocumentLoader.loadDocumentsRecursively(path, matcher);
     }

@@ -20,7 +20,15 @@ message StatusResponse {
   string response = 1;
 }
 
+message ResetRequest {
+}
+
+message ResetResponse {
+  string response = 1;
+}
+
 service DocumentationService {
   rpc StartIngestion (IngestionRequest) returns (stream IngestionResponse) {}
   rpc CheckStatus (StatusRequest) returns (StatusResponse) {}
+  rpc ClearDatabase (ResetRequest) returns (ResetResponse) {}
 }
