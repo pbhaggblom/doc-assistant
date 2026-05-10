@@ -6,8 +6,8 @@ import picocli.CommandLine.Command;
 
 import java.util.concurrent.Callable;
 
-@Command(name = "update")
-public class UpdateCommand implements Callable<Integer> {
+@Command(name = "status")
+public class StatusCommand implements Callable<Integer> {
 
     @GrpcClient("ingestor")
     DocumentationServiceBlockingStub documentService;
@@ -17,7 +17,7 @@ public class UpdateCommand implements Callable<Integer> {
         try {
             StatusRequest request = StatusRequest.newBuilder().build();
             StatusResponse response = documentService.checkStatus(request);
-            System.out.print(response.getResponse());
+            System.out.println(response.getResponse());
             System.out.flush();
             return 0;
         } catch (Exception e) {

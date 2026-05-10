@@ -42,7 +42,7 @@ public class IngestionCommand implements Callable<Integer> {
             Arrays.fill(password, ' ');
 
             if (tokens.isEmpty()) {
-                System.err.println("Login failed.");
+                System.err.println("Authorization failed.");
                 return 1;
             }
 
