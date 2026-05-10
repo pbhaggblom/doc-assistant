@@ -121,8 +121,8 @@ public class DocumentIngestionService implements DocumentationService {
     }
 
     @Blocking
-    @RolesAllowed("admin")
     @Override
+    @RolesAllowed("admin")
     public Uni<ResetResponse> clearDatabase(ResetRequest request) {
         try {
             store.removeAll(metadataKey("file_name").isGreaterThan(""));
