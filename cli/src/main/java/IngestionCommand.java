@@ -13,7 +13,7 @@ import java.io.Console;
 import java.util.*;
 import java.util.concurrent.Callable;
 
-@Command(name = "ingest")
+@Command(name = "ingest", description = "Initialize ingestion of the documentation")
 public class IngestionCommand implements Callable<Integer> {
 
     @GrpcClient("ingestor")

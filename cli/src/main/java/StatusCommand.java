@@ -6,7 +6,7 @@ import picocli.CommandLine.Command;
 
 import java.util.concurrent.Callable;
 
-@Command(name = "status")
+@Command(name = "status", description = "Check if there has been any changes in the documentation since last ingestion")
 public class StatusCommand implements Callable<Integer> {
 
     @GrpcClient("ingestor")
