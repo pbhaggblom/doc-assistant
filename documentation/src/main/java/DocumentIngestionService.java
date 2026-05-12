@@ -65,7 +65,7 @@ public class DocumentIngestionService implements DocumentationService {
                             .map(doc -> doc.metadata().getString("file_name"))
                             .toList();
 
-                    String response = docs.isEmpty()
+                    String response = changedFiles.isEmpty()
                             ? "No documents have been updated"
                             : "Following documents have been updated: \n\n" + listFiles(changedFiles);
 
