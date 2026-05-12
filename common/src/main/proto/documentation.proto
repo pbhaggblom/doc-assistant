@@ -27,8 +27,16 @@ message ResetResponse {
   string response = 1;
 }
 
+message StopRequest {
+}
+
+message StopResponse {
+  string response = 1;
+}
+
 service DocumentationService {
   rpc StartIngestion (IngestionRequest) returns (stream IngestionResponse) {}
   rpc CheckStatus (StatusRequest) returns (StatusResponse) {}
   rpc ClearDatabase (ResetRequest) returns (ResetResponse) {}
+  rpc StopIngestion (StopRequest) returns (StopResponse) {}
 }
