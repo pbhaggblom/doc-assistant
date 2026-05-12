@@ -17,7 +17,7 @@ import io.quarkus.grpc.GrpcService;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.unchecked.Unchecked;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -73,51 +73,40 @@ public class DocumentIngestionService implements DocumentationService {
                 .build());
     }
 
-    @Blocking
     @Override
     @RolesAllowed("admin")
     public Multi<IngestionResponse> startIngestion(IngestionRequest request) {
-        if (!isRunning.compareAndSet(false, true)) {
-            throw Status.ALREADY_EXISTS
-                    .withDescription("Ingestion is already running")
-                    .asRuntimeException();
-        }
+        return Multi.createFrom().emitter(emitter -> {
+            if (!isRunning.compareAndSet(false, true)) {
+                emitter.fail(Status.ALREADY_EXISTS.withDescription("Ingestion is already running").asRuntimeException());
+            }
 
-        PathMatcher matcher = getPathMatcher();
+            Infrastructure.getDefaultWorkerPool().execute(() -> {
+                try {
+                    PathMatcher matcher = getPathMatcher();
+                    List<Document> docs = loadDocuments(path, matcher);
 
-        return Multi.createFrom().iterable(loadDocuments(path, matcher))
-                .onItem().transform(Unchecked.function(doc -> {
+                    for (Document doc : docs) {
+                        if (emitter.isCancelled()) {
+                            System.out.println("Ingestion cancelled.");
+                            return;
+                        }
 
-                    String fileName = doc.metadata().getString("file_name");
-                    String currentHash = calculateHash(doc.text());
+                        String response = processDocument(doc);
 
-                    if (isAlreadyIndexed(fileName, currentHash)) {
-                        String res = "Skipping " + fileName + " - no changes detected.";
-                        return IngestionResponse.newBuilder().setResponse(res).build();
+                        emitter.emit(IngestionResponse.newBuilder()
+                                .setResponse(response)
+                                .build());
                     }
+                    emitter.complete();
 
-                    String res = "Changes detected in " + fileName + ". Updating index...";
-
-                    doc.metadata().put("file_hash", currentHash);
-                    doc.metadata().put("ingestion_date", LocalDateTime.now().toString());
-
-                    String cleanedText = cleanMarkdown(doc.text());
-                    String textWithContext = "Document: " + fileName + "\n\n" + cleanedText;
-                    Document cleanDoc = Document.from(textWithContext, doc.metadata());
-
-                    try {
-                        ingestor.ingest(cleanDoc);
-                        store.removeAll(metadataKey("file_name").isEqualTo(fileName)
-                                .and(metadataKey("file_hash").isNotEqualTo(currentHash)));
-                    } catch (Exception e) {
-                        store.removeAll(metadataKey("file_name").isEqualTo(fileName)
-                                        .and(metadataKey("file_hash").isEqualTo(currentHash)));
-                        throw e;
-                    }
-
-                    return IngestionResponse.newBuilder().setResponse(res).build();
-                }))
-                .onTermination().invoke(() -> isRunning.set(false));
+                } catch (Exception e) {
+                    emitter.fail(e);
+                } finally {
+                    isRunning.set(false);
+                }
+            });
+        });
     }
 
     @Blocking
@@ -131,7 +120,6 @@ public class DocumentIngestionService implements DocumentationService {
                     .setResponse("Database cleared successfully.")
                     .build());
         } catch (Exception e) {
-            e.printStackTrace();
             throw Status.INTERNAL
                     .withDescription("Failed to clear database: " + e.getMessage())
                     .asRuntimeException();
@@ -140,6 +128,37 @@ public class DocumentIngestionService implements DocumentationService {
 
     private List<Document> loadDocuments(Path path, PathMatcher matcher) {
         return FileSystemDocumentLoader.loadDocumentsRecursively(path, matcher);
+    }
+
+    private String processDocument(Document doc) {
+        String fileName = doc.metadata().getString("file_name");
+        String currentHash = calculateHash(doc.text());
+
+        if (isAlreadyIndexed(fileName, currentHash)) {
+            return "Skipping " + fileName + " - no changes detected.";
+        }
+
+        String res = "Changes detected in " + fileName + ". Updating index...";
+
+        doc.metadata().put("file_hash", currentHash);
+        doc.metadata().put("ingestion_date", LocalDateTime.now().toString());
+
+        String cleanedText = cleanMarkdown(doc.text());
+        String textWithContext = "Document: " + fileName + "\n\n" + cleanedText;
+        Document cleanDoc = Document.from(textWithContext, doc.metadata());
+
+        try {
+            ingestor.ingest(cleanDoc);
+            store.removeAll(metadataKey("file_name").isEqualTo(fileName)
+                    .and(metadataKey("file_hash").isNotEqualTo(currentHash)));
+        } catch (Exception e) {
+            store.removeAll(metadataKey("file_name").isEqualTo(fileName)
+                    .and(metadataKey("file_hash").isEqualTo(currentHash)));
+            throw Status.INTERNAL
+                    .withDescription("Ingestion error: " + e.getMessage())
+                    .asRuntimeException();
+        }
+        return res;
     }
 
     private boolean isAlreadyIndexed(String fileName, String hash) {
