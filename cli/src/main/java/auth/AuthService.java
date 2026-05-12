@@ -21,7 +21,7 @@ public class AuthService {
     public Metadata getAuthHeaders() {
         Console console = System.console();
         if (console == null) {
-            System.err.println("No console available.");
+            throw new RuntimeException("No console available.");
         }
 
         String username = console.readLine("Username: ");
