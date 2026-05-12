@@ -19,8 +19,7 @@ public class StatusCommand implements Callable<Integer> {
         try {
             StatusRequest request = StatusRequest.newBuilder().build();
             StatusResponse response = documentService.checkStatus(request);
-            System.out.println(response.getResponse());
-            System.out.flush();
+            System.out.print(response.getResponse());
             return 0;
         } catch (Exception e) {
             System.err.println("Error while checking status: " + e.getMessage());
