@@ -2,6 +2,8 @@ package command;
 
 import auth.AuthService;
 import io.grpc.Metadata;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.MetadataUtils;
 import io.quarkus.grpc.GrpcClient;
 import jakarta.inject.Inject;
@@ -12,6 +14,7 @@ import picocli.CommandLine.Command;
 
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Command(name = "ingest", description = "Initialize ingestion of the documentation. Requires admin access.")
 public class IngestionCommand implements Callable<Integer> {
@@ -22,8 +25,14 @@ public class IngestionCommand implements Callable<Integer> {
     @Inject
     AuthService authService;
 
+    private final AtomicBoolean success = new AtomicBoolean(false);
+
     @Override
     public Integer call() {
+
+        success.set(false);
+        addShutdownHook();
+
         try {
             Metadata headers = authService.getAuthHeaders();
 
@@ -39,11 +48,23 @@ public class IngestionCommand implements Callable<Integer> {
                 System.out.println(response.getResponse());
             }
             System.out.println("Ingestion completed successfully");
+            success.set(true);
             return 0;
 
         } catch (Exception e) {
+            success.set(true);
             System.err.println("Error during ingestion: " + e.getMessage());
             return 1;
         }
+    }
+
+    private void addShutdownHook() {
+        Thread mainThread = Thread.currentThread();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (mainThread.isAlive() && !success.get()) {
+                System.err.println("\nStream interrupted. Ingestion running in the background on server");
+            }
+        }));
     }
 }
