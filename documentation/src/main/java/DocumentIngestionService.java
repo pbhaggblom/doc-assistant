@@ -53,25 +53,27 @@ public class DocumentIngestionService implements DocumentationService {
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
     private final AtomicBoolean stopRequested = new AtomicBoolean(false);
 
-    @Blocking
     @Override
     public Uni<StatusResponse> checkStatus(StatusRequest request) {
-        PathMatcher matcher = getPathMatcher();
+        return Uni.createFrom().item(() -> {
+                    PathMatcher matcher = getPathMatcher();
+                    return loadDocuments(path, matcher);
+                })
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                .map(docs -> {
+                    List<String> changedFiles = docs.stream()
+                            .filter(this::hasPendingChanges)
+                            .map(doc -> doc.metadata().getString("file_name"))
+                            .toList();
 
-        List<String> changedFiles = loadDocuments(path, matcher).stream()
-                .filter(this::hasPendingChanges)
-                .map(doc -> doc.metadata().getString("file_name"))
-                .toList();
+                    String response = docs.isEmpty()
+                            ? "No documents have been updated"
+                            : "Following documents have been updated: \n\n" + listFiles(changedFiles);
 
-        String response = changedFiles.isEmpty()
-                ? "No documents have been updated since last ingestion"
-                : "Following documents have been updated since last ingestion: \n\n" + listFiles(changedFiles);
-
-        return Uni.createFrom()
-                .item(StatusResponse
-                .newBuilder()
-                .setResponse(response)
-                .build());
+                    return StatusResponse.newBuilder()
+                            .setResponse(response)
+                            .build();
+                });
     }
 
     @Override
@@ -117,27 +119,30 @@ public class DocumentIngestionService implements DocumentationService {
     @Override
     @RolesAllowed("admin")
     public Uni<ResetResponse> clearDatabase(ResetRequest request) {
-        try {
-            store.removeAll(metadataKey("file_name").isNotEqualTo(""));
-
-            return Uni.createFrom().item(ResetResponse.newBuilder()
-                    .setResponse("Database cleared successfully.")
-                    .build());
-        } catch (Exception e) {
-            throw Status.INTERNAL
-                    .withDescription("Failed to clear database: " + e.getMessage())
-                    .asRuntimeException();
-        }
+        return Uni.createFrom().item(() -> {
+                    store.removeAll(metadataKey("file_name").isNotEqualTo(""));
+                    return "Database cleared successfully.";
+                })
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                .map(message -> ResetResponse.newBuilder().setResponse(message).build())
+                .onFailure().transform(e ->
+                    Status.INTERNAL
+                            .withDescription("Failed to clear database: " + e.getMessage())
+                            .asRuntimeException()
+                );
     }
 
     @Override
     @RolesAllowed("admin")
     public Uni<StopResponse> stopIngestion(StopRequest request) {
-        if (isRunning.get()) {
-            stopRequested.set(true);
-            return Uni.createFrom().item(StopResponse.newBuilder().setResponse("Ingestion stop requested").build());
-        }
-        return Uni.createFrom().item(StopResponse.newBuilder().setResponse("Ingestion is not running").build());
+        return Uni.createFrom().item(() -> {
+                    if (isRunning.get()) {
+                        stopRequested.set(true);
+                        return "Ingestion stop requested";
+                    }
+                    return "Ingestion is not running";
+                })
+                .map(message -> StopResponse.newBuilder().setResponse(message).build());
     }
 
     private List<Document> loadDocuments(Path path, PathMatcher matcher) {
