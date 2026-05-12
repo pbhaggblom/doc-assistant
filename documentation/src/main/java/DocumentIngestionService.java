@@ -51,6 +51,7 @@ public class DocumentIngestionService implements DocumentationService {
     private static final Embedding DUMMY_EMBEDDING = Embedding.from(ZERO_VECTOR);
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
+    private final AtomicBoolean stopRequested = new AtomicBoolean(false);
 
     @Blocking
     @Override
@@ -81,22 +82,24 @@ public class DocumentIngestionService implements DocumentationService {
                 emitter.fail(Status.ALREADY_EXISTS.withDescription("Ingestion is already running").asRuntimeException());
             }
 
+            stopRequested.set(false);
+
             Infrastructure.getDefaultWorkerPool().execute(() -> {
                 try {
                     PathMatcher matcher = getPathMatcher();
                     List<Document> docs = loadDocuments(path, matcher);
 
                     for (Document doc : docs) {
-                        if (emitter.isCancelled()) {
-                            System.out.println("Ingestion cancelled.");
-                            return;
+                        if (stopRequested.get()) {
+                            System.out.println("Ingestion stop requested.");
+                            break;
                         }
 
                         String response = processDocument(doc);
 
-                        emitter.emit(IngestionResponse.newBuilder()
-                                .setResponse(response)
-                                .build());
+                        if (!emitter.isCancelled()) {
+                            emitter.emit(IngestionResponse.newBuilder().setResponse(response).build());
+                        }
                     }
                     emitter.complete();
 
@@ -104,6 +107,7 @@ public class DocumentIngestionService implements DocumentationService {
                     emitter.fail(e);
                 } finally {
                     isRunning.set(false);
+                    stopRequested.set(false);
                 }
             });
         });
@@ -124,6 +128,16 @@ public class DocumentIngestionService implements DocumentationService {
                     .withDescription("Failed to clear database: " + e.getMessage())
                     .asRuntimeException();
         }
+    }
+
+    @Override
+    @RolesAllowed("admin")
+    public Uni<StopResponse> stopIngestion(StopRequest request) {
+        if (isRunning.get()) {
+            stopRequested.set(true);
+            return Uni.createFrom().item(StopResponse.newBuilder().setResponse("Ingestion stop requested").build());
+        }
+        return Uni.createFrom().item(StopResponse.newBuilder().setResponse("Ingestion is not running").build());
     }
 
     private List<Document> loadDocuments(Path path, PathMatcher matcher) {
