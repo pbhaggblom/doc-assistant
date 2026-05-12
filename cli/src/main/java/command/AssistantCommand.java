@@ -1,3 +1,5 @@
+package command;
+
 import io.quarkus.grpc.GrpcClient;
 import org.pbhaggblom.assistant.AssistantServiceGrpc;
 import org.pbhaggblom.assistant.AssistantRequest;
@@ -9,7 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@Command(name = "ask")
+@Command(name = "ask", description = "Ask a question")
 public class AssistantCommand implements Callable<Integer> {
 
     @GrpcClient("assistant")

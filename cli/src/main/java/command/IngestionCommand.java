@@ -1,54 +1,38 @@
+package command;
+
+import auth.AuthService;
 import io.grpc.Metadata;
 import io.grpc.stub.MetadataUtils;
 import io.quarkus.grpc.GrpcClient;
-import io.quarkus.oidc.client.OidcClient;
-import io.quarkus.oidc.client.Tokens;
 import jakarta.inject.Inject;
 import org.pbhaggblom.documentation.DocumentationServiceGrpc.DocumentationServiceBlockingStub;
 import org.pbhaggblom.documentation.IngestionRequest;
 import org.pbhaggblom.documentation.IngestionResponse;
 import picocli.CommandLine.Command;
 
-import java.io.Console;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-@Command(name = "ingest")
+@Command(name = "ingest", description = "Initialize ingestion of the documentation. Requires admin access.")
 public class IngestionCommand implements Callable<Integer> {
 
     @GrpcClient("ingestor")
     DocumentationServiceBlockingStub documentService;
 
     @Inject
-    OidcClient oidcClient;
+    AuthService authService;
+
+    private final AtomicBoolean success = new AtomicBoolean(false);
 
     @Override
     public Integer call() {
+
+        success.set(false);
+        addShutdownHook();
+
         try {
-            Console console = System.console();
-            if (console == null) {
-                System.err.println("No console available.");
-                return 1;
-            }
-
-            String username = console.readLine("Username: ");
-            char[] password = console.readPassword("Password: ");
-
-            Map<String, String> grantOptions = new HashMap<>();
-            grantOptions.put("username", username);
-            grantOptions.put("password", new String(password));
-
-            Optional<Tokens> tokens = oidcClient.getTokens(grantOptions).await().asOptional().indefinitely();
-            Arrays.fill(password, ' ');
-
-            if (tokens.isEmpty()) {
-                System.err.println("Login failed.");
-                return 1;
-            }
-
-            Metadata headers = new Metadata();
-            Metadata.Key<String> authKey = Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER);
-            headers.put(authKey, "Bearer " + tokens.get().getAccessToken());
+            Metadata headers = authService.getAuthHeaders();
 
             var authenticatedStub = documentService.withInterceptors(
                     MetadataUtils.newAttachHeadersInterceptor(headers)
@@ -62,11 +46,23 @@ public class IngestionCommand implements Callable<Integer> {
                 System.out.println(response.getResponse());
             }
             System.out.println("Ingestion completed successfully");
+            success.set(true);
             return 0;
 
         } catch (Exception e) {
+            success.set(true);
             System.err.println("Error during ingestion: " + e.getMessage());
             return 1;
         }
+    }
+
+    private void addShutdownHook() {
+        Thread mainThread = Thread.currentThread();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (mainThread.isAlive() && !success.get()) {
+                System.err.println("\nStream interrupted. Ingestion running in the background on server");
+            }
+        }));
     }
 }
