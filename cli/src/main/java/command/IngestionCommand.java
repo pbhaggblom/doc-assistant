@@ -50,6 +50,11 @@ public class IngestionCommand implements Callable<Integer> {
             return 0;
 
         } catch (Exception e) {
+
+            if (isShutdown(e)) {
+                return 1; 
+            }
+
             success.set(true);
             System.err.println("Error during ingestion: " + e.getMessage());
             return 1;
@@ -64,5 +69,10 @@ public class IngestionCommand implements Callable<Integer> {
                 System.err.println("\nStream interrupted. Ingestion running in the background on server");
             }
         }));
+    }
+
+    private boolean isShutdown(Throwable t) {
+        String msg = t.getMessage();
+        return msg != null && (msg.contains("UNAVAILABLE") || msg.contains("shutdownNow"));
     }
 }
