@@ -115,7 +115,6 @@ public class DocumentIngestionService implements DocumentationService {
         });
     }
 
-    @Blocking
     @Override
     @RolesAllowed("admin")
     public Uni<ResetResponse> clearDatabase(ResetRequest request) {
