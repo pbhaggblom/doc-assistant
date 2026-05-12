@@ -12,7 +12,7 @@ import picocli.CommandLine.Command;
 
 import java.util.concurrent.Callable;
 
-@Command(name = "reset-db", description = "Resets vector database. Requires admin access.")
+@Command(name = "reset", description = "Resets vector database. Requires admin access.")
 public class ResetCommand implements Callable<Integer> {
 
     @GrpcClient("ingestor")
