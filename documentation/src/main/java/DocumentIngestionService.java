@@ -14,7 +14,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 import io.grpc.Status;
 import io.quarkus.grpc.GrpcService;
-import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
