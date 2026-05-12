@@ -1,3 +1,6 @@
+package command;
+
+import auth.AuthService;
 import io.grpc.Metadata;
 import io.grpc.stub.MetadataUtils;
 import io.quarkus.grpc.GrpcClient;

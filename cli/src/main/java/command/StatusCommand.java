@@ -1,3 +1,5 @@
+package command;
+
 import io.quarkus.grpc.GrpcClient;
 import org.pbhaggblom.documentation.DocumentationServiceGrpc.DocumentationServiceBlockingStub;
 import org.pbhaggblom.documentation.StatusRequest;

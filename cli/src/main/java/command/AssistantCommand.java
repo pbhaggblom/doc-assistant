@@ -1,3 +1,5 @@
+package command;
+
 import io.quarkus.grpc.GrpcClient;
 import org.pbhaggblom.assistant.AssistantServiceGrpc;
 import org.pbhaggblom.assistant.AssistantRequest;

@@ -1,3 +1,5 @@
+package auth;
+
 import io.grpc.Metadata;
 import io.quarkus.oidc.client.OidcClient;
 import io.quarkus.oidc.client.Tokens;
