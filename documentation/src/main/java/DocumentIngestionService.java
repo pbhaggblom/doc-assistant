@@ -19,7 +19,6 @@ import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.pbhaggblom.documentation.*;
 
@@ -31,7 +30,6 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 
 
 @GrpcService
-@Singleton
 public class DocumentIngestionService implements DocumentationService {
 
     @Inject
@@ -66,7 +64,7 @@ public class DocumentIngestionService implements DocumentationService {
                             .toList();
 
                     String response = changedFiles.isEmpty()
-                            ? "No documents have been updated"
+                            ? "No documents have been updated\n"
                             : "Following documents have been updated: \n\n" + listFiles(changedFiles);
 
                     return StatusResponse.newBuilder()
@@ -81,6 +79,7 @@ public class DocumentIngestionService implements DocumentationService {
         return Multi.createFrom().emitter(emitter -> {
             if (!isRunning.compareAndSet(false, true)) {
                 emitter.fail(Status.ALREADY_EXISTS.withDescription("Ingestion is already running").asRuntimeException());
+                return;
             }
 
             stopRequested.set(false);
@@ -165,9 +164,9 @@ public class DocumentIngestionService implements DocumentationService {
         Document cleanDoc = Document.from(textWithContext, doc.metadata());
 
         try {
-            ingestor.ingest(cleanDoc);
             store.removeAll(metadataKey("file_name").isEqualTo(fileName)
                     .and(metadataKey("file_hash").isNotEqualTo(currentHash)));
+            ingestor.ingest(cleanDoc);
         } catch (Exception e) {
             store.removeAll(metadataKey("file_name").isEqualTo(fileName)
                     .and(metadataKey("file_hash").isEqualTo(currentHash)));
