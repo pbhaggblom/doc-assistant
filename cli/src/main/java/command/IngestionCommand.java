@@ -34,6 +34,8 @@ public class IngestionCommand implements Callable<Integer> {
         try {
             Metadata headers = authService.getAuthHeaders();
 
+            System.out.println("Ingestion initialized");
+
             var authenticatedStub = documentService.withInterceptors(
                     MetadataUtils.newAttachHeadersInterceptor(headers)
             );
