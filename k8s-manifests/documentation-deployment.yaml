@@ -25,6 +25,6 @@ spec:
       volumes:
       - name: k8s-docs
         hostPath: 
-          path: "/home/pontus/code/k8s-docs/content/en/docs/concepts/configuration"
+          path: "/change/this"
           type: Directory
 

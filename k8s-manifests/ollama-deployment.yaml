@@ -15,7 +15,7 @@ spec:
         app: ollama
     spec:
       nodeSelector:
-        kubernetes.io/hostname: server
+        kubernetes.io/hostname: fedora
       containers:
       - image: ollama/ollama:latest
         name: ollama
