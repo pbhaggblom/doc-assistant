@@ -11,9 +11,17 @@ public class DocAssistantService implements AssistantService {
     @Inject
     DocAssistant assistant;
 
+    @Inject
+    ContextRetriever contextRetriever;
+
     @Override
     public Multi<AssistantResponse> resultStream(AssistantRequest request) {
-        return assistant.searchDocs(request.getQuestion()).onItem()
-                .transform(chunk -> AssistantResponse.newBuilder().setTextChunk(chunk).build());
+        return contextRetriever.retrieve(request.getQuestion())
+                .onItem().transformToMulti(context ->
+                        assistant.searchDocs(request.getQuestion(), context)
+                )
+                .onItem().transform(chunk ->
+                        AssistantResponse.newBuilder().setTextChunk(chunk).build()
+                );
     }
 }
