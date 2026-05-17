@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.security.MessageDigest;
-import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,7 +43,7 @@ public class DocumentIngestionService implements DocumentationService {
     @ConfigProperty(name = "rag.location")
     Path path;
 
-    private static final float[] ZERO_VECTOR = new float[768];
+    private static final float[] ZERO_VECTOR = new float[1024];
     private static final Embedding DUMMY_EMBEDDING = Embedding.from(ZERO_VECTOR);
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -157,7 +156,6 @@ public class DocumentIngestionService implements DocumentationService {
         String res = "Changes detected in " + fileName + ". Updating index...";
 
         doc.metadata().put("file_hash", currentHash);
-        doc.metadata().put("ingestion_date", LocalDateTime.now().toString());
 
         String cleanedText = cleanMarkdown(doc.text());
         String textWithContext = "Document: " + fileName + "\n\n" + cleanedText;
@@ -225,8 +223,23 @@ public class DocumentIngestionService implements DocumentationService {
     }
 
     private PathMatcher getPathMatcher() {
-        return p -> p.getFileName().toString().endsWith(".md") &&
-                !p.getFileName().toString().startsWith("_");
+        return p -> {
+            String fullPath = p.toString();
+            String fileName = p.getFileName().toString();
+
+            if (fullPath.contains("contribute/") ||
+                    fullPath.contains("doc-contributor-tools/") ||
+                    fullPath.contains("home/") ||
+                    fullPath.contains("images/")) {
+                return false;
+            }
+
+            return fileName.endsWith(".md") &&
+                    !fileName.startsWith("_") &&
+                    !fileName.startsWith("test") &&
+                    !fileName.startsWith("index") &&
+                    !fileName.startsWith("README");
+        };
     }
 
     private boolean hasPendingChanges(Document doc) {
