@@ -1,4 +1,5 @@
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.smallrye.mutiny.Multi;
 
@@ -6,10 +7,13 @@ import io.smallrye.mutiny.Multi;
 public interface DocAssistant {
 
     @SystemMessage("""
-        You are a technical assistant specialized in finding information in documentation.
-        Your replies are concise and accurate.
-        ONLY give answers based on the context provided to you. Do NOT use your external knowledge.
-        If you can't find the answer to the question in the documentation provided to you, just reply: "Couldn't find an answer in the documentation", nothing else.
-        """)
-    Multi<String> searchDocs(String query);
+            You are a documentation assistant. Use ONLY the provided documentation to answer.
+            If an answer is not found in the documentation, inform the user that you couldn't find an answer in the documentation.
+            """)
+    @UserMessage("""
+            Documentation: {docContext}
+            ---
+            Question: {question}
+            """)
+    Multi<String> searchDocs(String question, String docContext);
 }
