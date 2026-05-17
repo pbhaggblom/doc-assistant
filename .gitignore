@@ -46,3 +46,4 @@ nb-configuration.xml
 
 # Kubernetes
 k8s-secrets.yaml
+kustomization.yaml
