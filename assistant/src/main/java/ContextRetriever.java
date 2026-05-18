@@ -27,7 +27,7 @@ public class ContextRetriever {
                     EmbeddingSearchRequest.builder()
                             .queryEmbedding(queryEmbedding)
                             .maxResults(3)
-                            .minScore(0.6)
+                            .minScore(0.7)
                             .build()
             );
             return results.matches().stream()
