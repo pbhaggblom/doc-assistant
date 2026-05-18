@@ -148,8 +148,9 @@ public class DocumentIngestionService implements DocumentationService {
     private String processDocument(Document doc) {
         String fileName = doc.metadata().getString("file_name");
         String currentHash = calculateHash(doc.text());
+        String absoluteDirPath = doc.metadata().getString("absolute_directory_path");
 
-        if (isAlreadyIndexed(fileName, currentHash)) {
+        if (isAlreadyIndexed(fileName, currentHash, absoluteDirPath)) {
             return "Skipping " + fileName + " - no changes detected.";
         }
 
@@ -163,10 +164,12 @@ public class DocumentIngestionService implements DocumentationService {
 
         try {
             store.removeAll(metadataKey("file_name").isEqualTo(fileName)
+                    .and(metadataKey("absolute_directory_path").isEqualTo(absoluteDirPath))
                     .and(metadataKey("file_hash").isNotEqualTo(currentHash)));
             ingestor.ingest(cleanDoc);
         } catch (Exception e) {
             store.removeAll(metadataKey("file_name").isEqualTo(fileName)
+                    .and(metadataKey("absolute_directory_path").isEqualTo(absoluteDirPath))
                     .and(metadataKey("file_hash").isEqualTo(currentHash)));
             throw Status.INTERNAL
                     .withDescription("Ingestion error: " + e.getMessage())
@@ -175,8 +178,9 @@ public class DocumentIngestionService implements DocumentationService {
         return res;
     }
 
-    private boolean isAlreadyIndexed(String fileName, String hash) {
+    private boolean isAlreadyIndexed(String fileName, String hash, String absoluteDirPath) {
         Filter filter = metadataKey("file_name").isEqualTo(fileName)
+                .and(metadataKey("absolute_directory_path").isEqualTo(absoluteDirPath))
                 .and(metadataKey("file_hash").isEqualTo(hash));
 
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
@@ -245,6 +249,7 @@ public class DocumentIngestionService implements DocumentationService {
     private boolean hasPendingChanges(Document doc) {
         String fileName = doc.metadata().getString("file_name");
         String currentHash = calculateHash(doc.text());
-        return !isAlreadyIndexed(fileName, currentHash);
+        String absoluteDirPath = doc.metadata().getString("absolute_directory_path");
+        return !isAlreadyIndexed(fileName, currentHash, absoluteDirPath);
     }
 }
