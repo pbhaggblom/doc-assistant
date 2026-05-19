@@ -4,13 +4,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.security.MessageDigest;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-import dev.langchain4j.store.embedding.filter.Filter;
 import io.grpc.Status;
 import io.quarkus.grpc.GrpcService;
 import io.smallrye.mutiny.Multi;
@@ -57,17 +60,24 @@ public class DocumentIngestionService implements DocumentationService {
                 })
                 .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                 .map(docs -> {
+                    Set<String> alreadyIndexedCache = loadExistingIndex();
                     List<String> changedFiles = docs.stream()
-                            .filter(this::hasPendingChanges)
+                            .filter(doc -> hasPendingChanges(doc, alreadyIndexedCache))
                             .map(doc -> doc.metadata().getString("file_name"))
                             .toList();
 
-                    String response = changedFiles.isEmpty()
-                            ? "No documents have been updated\n"
-                            : "Following documents have been updated: \n\n" + listFiles(changedFiles);
+                    StringBuilder response = new StringBuilder();
+                    response.append(alreadyIndexedCache.size()).append(" files up to date\n");
+                    response.append("Ingestion is currently ").append(isRunning.get() ? "running" : "not running\n");
+
+                    if (changedFiles.isEmpty()) {
+                        response.append("No documents have been updated since last ingestion\n");
+                    } else {
+                        response.append("Following documents have been updated since last ingestion: \n\n").append(listFiles(changedFiles));
+                    }
 
                     return StatusResponse.newBuilder()
-                            .setResponse(response)
+                            .setResponse(response.toString())
                             .build();
                 });
     }
@@ -87,6 +97,7 @@ public class DocumentIngestionService implements DocumentationService {
                 try {
                     PathMatcher matcher = getPathMatcher();
                     List<Document> docs = loadDocuments(path, matcher);
+                    Set<String> indexedCache = loadExistingIndex();
 
                     for (Document doc : docs) {
                         if (stopRequested.get()) {
@@ -94,7 +105,7 @@ public class DocumentIngestionService implements DocumentationService {
                             break;
                         }
 
-                        String response = processDocument(doc);
+                        String response = processDocument(doc, indexedCache);
 
                         if (!emitter.isCancelled()) {
                             emitter.emit(IngestionResponse.newBuilder().setResponse(response).build());
@@ -145,12 +156,12 @@ public class DocumentIngestionService implements DocumentationService {
         return FileSystemDocumentLoader.loadDocumentsRecursively(path, matcher);
     }
 
-    private String processDocument(Document doc) {
+    private String processDocument(Document doc, Set<String> indexedCache) {
         String fileName = doc.metadata().getString("file_name");
         String currentHash = calculateHash(doc.text());
         String absoluteDirPath = doc.metadata().getString("absolute_directory_path");
 
-        if (isAlreadyIndexed(fileName, currentHash, absoluteDirPath)) {
+        if (isAlreadyIndexed(fileName, currentHash, absoluteDirPath, indexedCache)) {
             return "Skipping " + fileName + " - no changes detected.";
         }
 
@@ -167,6 +178,9 @@ public class DocumentIngestionService implements DocumentationService {
                     .and(metadataKey("absolute_directory_path").isEqualTo(absoluteDirPath))
                     .and(metadataKey("file_hash").isNotEqualTo(currentHash)));
             ingestor.ingest(cleanDoc);
+
+            String newKey = fileName + "|" + absoluteDirPath + "|" + currentHash;
+            indexedCache.add(newKey);
         } catch (Exception e) {
             store.removeAll(metadataKey("file_name").isEqualTo(fileName)
                     .and(metadataKey("absolute_directory_path").isEqualTo(absoluteDirPath))
@@ -178,18 +192,10 @@ public class DocumentIngestionService implements DocumentationService {
         return res;
     }
 
-    private boolean isAlreadyIndexed(String fileName, String hash, String absoluteDirPath) {
-        Filter filter = metadataKey("file_name").isEqualTo(fileName)
-                .and(metadataKey("absolute_directory_path").isEqualTo(absoluteDirPath))
-                .and(metadataKey("file_hash").isEqualTo(hash));
+    private boolean isAlreadyIndexed(String fileName, String hash, String absoluteDirPath, Set<String> indexedCache) {
+        String keyToCheck = fileName + "|" + absoluteDirPath + "|" + hash;
 
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .queryEmbedding(DUMMY_EMBEDDING)
-                .filter(filter)
-                .maxResults(1)
-                .build();
-
-        return !store.search(request).matches().isEmpty();
+        return indexedCache.contains(keyToCheck);
     }
 
     private String calculateHash(String content) {
@@ -246,10 +252,34 @@ public class DocumentIngestionService implements DocumentationService {
         };
     }
 
-    private boolean hasPendingChanges(Document doc) {
+    private boolean hasPendingChanges(Document doc, Set<String> indexedCache) {
         String fileName = doc.metadata().getString("file_name");
         String currentHash = calculateHash(doc.text());
         String absoluteDirPath = doc.metadata().getString("absolute_directory_path");
-        return !isAlreadyIndexed(fileName, currentHash, absoluteDirPath);
+        return !isAlreadyIndexed(fileName, currentHash, absoluteDirPath, indexedCache);
+    }
+
+    public Set<String> loadExistingIndex() {
+        Set<String> cache = new HashSet<>();
+
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(DUMMY_EMBEDDING)
+                .maxResults(50000)
+                .build();
+
+        List<EmbeddingMatch<TextSegment>> matches = store.search(request).matches();
+
+        for (EmbeddingMatch<TextSegment> match : matches) {
+            TextSegment segment = match.embedded();
+            String fileName = segment.metadata().getString("file_name");
+            String absoluteDirPath = segment.metadata().getString("absolute_directory_path");
+            String hash = segment.metadata().getString("file_hash");
+
+            if (fileName != null && hash != null) {
+                String key = fileName + "|" + absoluteDirPath + "|" + hash;
+                cache.add(key);
+            }
+        }
+        return cache;
     }
 }
