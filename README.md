@@ -58,7 +58,7 @@ keycloak.local
 - I have used Kubernetes documentation from https://github.com/kubernetes/website/tree/main/content/en/docs and the filtering in DocumentIngestionService.java is based on that
 
 ### Using the CLI
-- create a jar or native executable and run in your terminal
+- Create a jar or native executable and run in your terminal
 ```bash
 doc ask <question> # Ask a question
 doc status # Check ingestion status
