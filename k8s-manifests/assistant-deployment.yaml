@@ -15,8 +15,8 @@ spec:
         app: assistant
     spec:
       containers:
-      - image: pbhaggblom/assistant-test:latest
-        name: assistant-test
+      - image: pbhaggblom/assistant:v1.0
+        name: assistant
         ports:
         - containerPort: 9000
         imagePullPolicy: Always

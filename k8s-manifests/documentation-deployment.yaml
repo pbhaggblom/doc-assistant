@@ -15,8 +15,8 @@ spec:
         app: documentation
     spec:
       containers:
-      - image: pbhaggblom/documentation-test:latest
-        name: documentation-test
+      - image: pbhaggblom/documentation:v1.0
+        name: documentation
         ports:
         - containerPort: 8081
         volumeMounts:
