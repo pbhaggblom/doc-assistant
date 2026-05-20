@@ -17,6 +17,7 @@ public class StatusCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         try {
+            System.out.println("Checking status...");
             StatusRequest request = StatusRequest.newBuilder().build();
             StatusResponse response = documentService.checkStatus(request);
             System.out.print(response.getResponse());
