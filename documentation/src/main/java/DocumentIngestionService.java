@@ -4,16 +4,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.security.MessageDigest;
-import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import io.grpc.Status;
 import io.quarkus.grpc.GrpcService;
 import io.smallrye.mutiny.Multi;
@@ -43,11 +38,11 @@ public class DocumentIngestionService implements DocumentationService {
     @Inject
     EmbeddingStoreIngestor ingestor;
 
+    @Inject
+    ChromaIndexLoader indexLoader;
+
     @ConfigProperty(name = "rag.location")
     Path path;
-
-    private static final float[] ZERO_VECTOR = new float[1024];
-    private static final Embedding DUMMY_EMBEDDING = Embedding.from(ZERO_VECTOR);
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
     private final AtomicBoolean stopRequested = new AtomicBoolean(false);
@@ -60,14 +55,19 @@ public class DocumentIngestionService implements DocumentationService {
                 })
                 .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                 .map(docs -> {
-                    Set<String> alreadyIndexedCache = loadExistingIndex();
+                    Set<String> indexedCache;
+                    try {
+                        indexedCache = indexLoader.loadExistingIndex();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                     List<String> changedFiles = docs.stream()
-                            .filter(doc -> hasPendingChanges(doc, alreadyIndexedCache))
+                            .filter(doc -> hasPendingChanges(doc, indexedCache))
                             .map(doc -> doc.metadata().getString("file_name"))
                             .toList();
 
                     StringBuilder response = new StringBuilder();
-                    response.append(alreadyIndexedCache.size()).append(" files up to date\n");
+                    response.append(indexedCache.size()).append(" files up to date\n");
                     response.append("Ingestion is currently ").append(isRunning.get() ? "running" : "not running\n");
 
                     if (changedFiles.isEmpty()) {
@@ -78,6 +78,13 @@ public class DocumentIngestionService implements DocumentationService {
 
                     return StatusResponse.newBuilder()
                             .setResponse(response.toString())
+                            .build();
+                })
+                .onFailure().recoverWithItem(e -> {
+                    System.err.println("Error in checkStatus: " + e.getMessage());
+                    e.printStackTrace();
+                    return StatusResponse.newBuilder()
+                            .setResponse("Error while checking status: " + e.getMessage())
                             .build();
                 });
     }
@@ -97,7 +104,7 @@ public class DocumentIngestionService implements DocumentationService {
                 try {
                     PathMatcher matcher = getPathMatcher();
                     List<Document> docs = loadDocuments(path, matcher);
-                    Set<String> indexedCache = loadExistingIndex();
+                    Set<String> indexedCache = indexLoader.loadExistingIndex();
 
                     for (Document doc : docs) {
                         if (stopRequested.get()) {
@@ -257,29 +264,5 @@ public class DocumentIngestionService implements DocumentationService {
         String currentHash = calculateHash(doc.text());
         String absoluteDirPath = doc.metadata().getString("absolute_directory_path");
         return !isAlreadyIndexed(fileName, currentHash, absoluteDirPath, indexedCache);
-    }
-
-    public Set<String> loadExistingIndex() {
-        Set<String> cache = new HashSet<>();
-
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .queryEmbedding(DUMMY_EMBEDDING)
-                .maxResults(50000)
-                .build();
-
-        List<EmbeddingMatch<TextSegment>> matches = store.search(request).matches();
-
-        for (EmbeddingMatch<TextSegment> match : matches) {
-            TextSegment segment = match.embedded();
-            String fileName = segment.metadata().getString("file_name");
-            String absoluteDirPath = segment.metadata().getString("absolute_directory_path");
-            String hash = segment.metadata().getString("file_hash");
-
-            if (fileName != null && hash != null) {
-                String key = fileName + "|" + absoluteDirPath + "|" + hash;
-                cache.add(key);
-            }
-        }
-        return cache;
     }
 }
