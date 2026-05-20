@@ -46,11 +46,11 @@ ollama pull mxbai-embed-large
 - Login to your Keycloak instance, create a realm called doc-assistant-realm and add an admin user.
 
 ### Hostnames
-- Add the following hostnames to your hosts-file
-```bash
-assistant.doc-assistant
-docs.doc-assistant
-keycloak.local
+- Add the following hostnames to your /etc/hosts-file
+```text
+<EXTERNAL_CLUSTER_IP> assistant.doc-assistant
+<EXTERNAL_CLUSTER_IP> docs.doc-assistant
+<EXTERNAL_CLUSTER_IP> keycloak.local
 ```
 
 ### Documentation
